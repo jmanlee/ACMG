@@ -4,7 +4,6 @@ from collections import defaultdict
 
 
 def read_big_file(filename: str) -> str:
-
     """_summary_
     Note:
         input file의 각 line 정보를 generator 형식으로, 매 호출시 반환한다.
@@ -70,7 +69,6 @@ def parse_spliceai_db(filename: str) -> dict:
 
 
 def make_spliceai_var_info_dic(var_row: list, file_col2idx: dict) -> dict:
-
     """_summary_
     Note:
         spliceai 결과값이 추가된 vcf 파일의 각 라인을 파징하여, {"gene1": [score], "gene2": [score]}
@@ -124,7 +122,6 @@ def make_spliceai_var_info_dic(var_row: list, file_col2idx: dict) -> dict:
 
 
 def parse_revel_db(filename: str) -> tuple():  # ok
-
     """사용하지 않는 함수. dbparser 대신, iteration으로 각 variant의 info란에 저장하는 형식으로 변경.
     _summary_
     Note:
@@ -207,7 +204,6 @@ def make_revel_predict_infos(row_var: list, file_col2idx: dict) -> list:
 
 
 def parse_clinvar_db(filename: str) -> tuple:
-
     """_summary_
     Note:
         ClinVar database 파일을 parsing 하여, "gene_symbol"을 key로 하는 dictionary를
@@ -261,7 +257,6 @@ def parse_clinvar_db(filename: str) -> tuple:
 
 
 def make_clinvar_gene_info_dic(var_row: list, file_col2idx: dict) -> dict:
-
     """_summary_
     Note:
         ClinVar database의 각 라인을 파징하여, { symbol: {var_id: [var_infos]}}와 같이 구성된
