@@ -1,0 +1,327 @@
+# module for dasebase parsing
+
+from collections import defaultdict
+
+
+def read_big_file(filename: str) -> str:
+
+    """_summary_
+    Note:
+        input file의 각 line 정보를 generator 형식으로, 매 호출시 반환한다.
+
+    Args:
+        filename (str): file address
+
+    Yields:
+        line (str): 각 line의 정보를 매 호출 시 string으로 반환
+    """
+
+    with open(filename) as infile:
+        for line in infile:
+            if not line:
+                break
+            yield line
+
+
+def parse_spliceai_db(filename: str) -> dict:
+    """_summary_
+    Note:
+        환자의 vcf 파일을 input으로 하여 얻은 spliceai 예측값을 parsing 하여, 각 변이 id에 대해
+        spliceai prediction score를 저장한다. 이 때, 동일한 변이 위치라도 1 가지 이상의 유전자가
+        해당될 수 있기 때문에, "gene_symbol"을 key 값 으로 갖는 sub_dictionary를 생성한다.
+
+    Args:
+        filename (str): file address
+
+    Returns:
+        spliceai_db_dic (dict): { "var_id":
+                                    { "gene1": [predict score], "gene2": [PS] }
+                                }
+    Examples:
+        >>> {
+                ("id (1-1571640-G-T)): { <predict_info_dic>
+
+                    ( gene_symbol_1: [DS_AG, DS_AL, DS_DG, DS_DL] )
+                        "CDK11B": [0.00, 0.01, 0.00, 0.00]
+                        "PREAMEF12": [0.12, 0.11, 0.00, 0.01]
+                }
+            }
+    """
+
+    with open(filename) as infile:
+
+        spliceai_db_dic = dict()
+        # {id : { gene_symbol : [predict score]}}
+        for line in infile:
+            if line.startswith("#") and (not line.startswith("##")):
+                f_col2idx = {
+                    val: idx
+                    for idx, val in enumerate(
+                        line.strip("#").strip().split("\t")
+                    )
+                }
+            if not line.startswith("#"):  # variation info
+                row = line.strip().split("\t")
+                var_id = row[f_col2idx["ID"]]  # 1-985445-G-GT
+                predict_info_dic = make_spliceai_var_info_dic(row, f_col2idx)
+                spliceai_db_dic[var_id] = predict_info_dic
+
+    return spliceai_db_dic
+
+
+def make_spliceai_var_info_dic(var_row: list, file_col2idx: dict) -> dict:
+
+    """_summary_
+    Note:
+        spliceai 결과값이 추가된 vcf 파일의 각 라인을 파징하여, {"gene1": [score], "gene2": [score]}
+        로 구성된 <predict_info_dic> 을 만들어 반환한다. 이 때, 각 "id"에 대하여 여러 gene이 해당하는 경우가
+        있다. 또한, 값이 없는 경우(.|.|.|.)가 있기 때문에, ValueError 예외처리를 통해 None값을 저장하였다.
+
+    Args:
+        var_row (list): splitted each file line
+        file_col2idx (dict): file index dictionary
+
+    Returns:
+        dict: { "gene1": [predict score], "gene2": [DS_AG, DS_AL, DS_DG, DS_DL] }
+
+    Examples:
+        >>> {
+                "CDK11B": [0.00, 0.01, 0.00, 0.00]
+                "PREAMEF12": [0.12, 0.11, 0.00, 0.01]
+            }
+    """
+    ## CHROM POS    ID           REF    ALT         QUAL    FILTER
+    #  1   985445 1-985445-G-GT    G      GT       1488.73    PASS
+    ## INFO
+    # AC=1;AF=0.5;AN=2;BaseQRankSum=0.063;ClippingRankSum=0;DP=133;ExcessHet=3.0103;
+    # FS=2.331;MLEAC=1;MLEAF=0.5;MQ=60;MQRankSum=0;QD=11.91;ReadPosRankSum=0.012;SOR=0.926;set=variant2;
+    # (Format: ALLELE|SYMBOL|DS_AG|DS_AL|DS_DG|DS_DL|DP_AG|DP_AL|DP_DG|DP_DL">)
+    # SpliceAI=T|MMP23B|0.00|0.00|0.00|0.00|-17|-27|-11|-15,T|CDK11B|0.00|0.01|0.00|0.00|-9|-37|-46|10
+
+    predict_info_dic = dict()  # initialization
+
+    if "SpliceAI=" in var_row[file_col2idx["INFO"]]:
+
+        # store with as gene
+        predict_values: list = (
+            var_row[file_col2idx["INFO"]]
+            .split("SpliceAI=")[1]
+            .split(";")[0]
+            .split(",")
+        )
+        # multiple genes
+        for i in range(len(predict_values)):
+            predict_result: list = predict_values[i].split("|")
+            gene_symbol = predict_result[1]
+
+            try:
+                values = list(map(float, predict_result[2:6]))
+                predict_info_dic[gene_symbol] = values
+            except ValueError:
+                predict_info_dic[gene_symbol] = None
+
+    return predict_info_dic
+
+
+def parse_revel_db(filename: str) -> tuple():  # ok
+
+    """사용하지 않는 함수. dbparser 대신, iteration으로 각 variant의 info란에 저장하는 형식으로 변경.
+    _summary_
+    Note:
+        가능한 missense variation에 대한 예측 score를 제공하는, revel database(7Gb)를 파징하여 dictionary
+        형식으로 반환하는 함수. {"var_id" : [revel_infos]}. transcript_id가 여러 개인 경우 있음.
+
+    Args:
+        filename (str): file address
+
+    Returns:
+        dict:   {
+                    "var_key": [aaref, aaalt, revel_score, [enst_ids]]
+                }
+    Examples:
+        >>> {
+                "1-69728-T-C": ["I", "T", 0.035, ["ENST00000534990", "ENST00000335137"]],
+            }
+    """
+
+    revel_col2idx: dict = {
+        "aaref": 0,
+        "aaalt": 1,
+        "revel_score": 2,
+        "enst_id": 3,
+    }
+
+    with open(filename) as infile:
+
+        revel_db_dic = dict()
+        # {id : [proedict score]}
+        for line in infile:
+            if line.startswith("chr"):
+                f_col2idx = {
+                    val: idx for idx, val in enumerate(line.strip().split(","))
+                }
+            else:  # new info
+                row = line.strip().split(",")
+                chr = row[f_col2idx["chr"]]
+                pos = row[f_col2idx["hg19_pos"]]
+                ref = row[f_col2idx["ref"]]
+                alt = row[f_col2idx["alt"]]
+                var_id = f"{chr}-{pos}-{ref}-{alt}"  # 1-985445-G-GT
+
+                predict_infos: list = make_revel_predict_infos(row, f_col2idx)
+                revel_db_dic[var_id] = predict_infos
+
+    return revel_db_dic, revel_col2idx
+
+
+def make_revel_predict_infos(row_var: list, file_col2idx: dict) -> list:
+    """_summary_
+    Note:
+        revel의 각 라인을 파징하여, 예측값에 대한 정보들을 리스트로 반환한다. 이 때, Ensembl transcript id는
+        여러개가 있을 수 있으므로, split 하여 리스트로 저장한다.
+
+    Args:
+        var_row (list): splitted each file line
+        file_col2idx (dict): file index dictionary
+
+    Returns:
+        list: [aaref, aaalt, revel_score, [enst_ids]]
+
+    Examples:
+    >>> ["I", "T", 0.035, ["ENST00000534990", "ENST00000335137"]
+    """
+    ##chr,hg19_pos,grch38_pos,ref,alt,aaref,aaalt,REVEL,Ensembl_transcriptid
+    # 1,35142,35142,G,A,T,M,0.027,ENST00000417324
+    # 1,35142,35142,G,C,T,R,0.035,ENST00000417324
+
+    ensembl_ids: list = row_var[file_col2idx["Ensembl_transcriptid"]].split(";")
+
+    predict_infos: list = [
+        row_var[file_col2idx["aaref"]],
+        row_var[file_col2idx["aaalt"]],
+        float(row_var[file_col2idx["REVEL"]]),
+        ensembl_ids,
+    ]
+
+    return predict_infos
+
+
+def parse_clinvar_db(filename: str) -> tuple:
+
+    """_summary_
+    Note:
+        ClinVar database 파일을 parsing 하여, "gene_symbol"을 key로 하는 dictionary를
+        반환한다. 파일의 라인은 각각 특정한 variant_id(e.g. 13-32950906-C-A)를 가지고 있으며,
+        변이에 대한 복수의 보고가 정리되어 있다. 이 때, 동일한 variant_id가 존재하는 경우가 간혹 있는데,
+        (직접 확인했을 때) 내용 중 대부분 증상에 관한 차이만 있으므로 별도로 저장하지 않고 덮어쓴다. 동일한 유전자에
+        해당하는 var_id는 { "var_id": [molecular_consequences, pathogenicity(dict)] } 와 같은
+        sub_dictionary 형태로 기존의 value(dict)에 update해서 저장한다.
+
+        * molecular_consquence: Pathogenic, Benign 등..
+        * pathogenicity: missense variant, intron variant 등..
+
+    Args:
+        filename (str): file address
+
+    Returns:
+        dict: { "gene symbol": { "var_id": [molecular_consequences, pathogenicity(dict)] }}
+
+    Examples:
+        >>> {
+                "BRCA2": {
+                    "13-32921028-CTTTCGG-C": ["Pathogenic", {"splice donor variant": 1}]
+                    "13-32950906-C-A": ["Pathogenic", {"missense variant": 2, "intron variant": 1}]
+                }
+            }
+    """
+
+    clinvar_col2idx: dict = {"pathogenicity": 0, "consequence_dic": 1}
+
+    with open(filename) as infile:
+
+        clinvar_db_dic = defaultdict(dict)
+        # { symbol: {var_id: [var_infos]}}
+        for line in infile:
+            if line.startswith("#"):
+                f_col2idx = {
+                    val: idx
+                    for idx, val in enumerate(
+                        line.strip("#").strip().split("\t")
+                    )
+                }
+            else:  # clinvar info
+                row = line.strip().split("\t")
+                gene_symbol = row[f_col2idx["variant:gene:symbol"]]
+                clinvar_var_info_dic = make_clinvar_gene_info_dic(
+                    row, f_col2idx
+                )
+                clinvar_db_dic[gene_symbol].update(clinvar_var_info_dic)
+
+    return clinvar_db_dic, clinvar_col2idx
+
+
+def make_clinvar_gene_info_dic(var_row: list, file_col2idx: dict) -> dict:
+
+    """_summary_
+    Note:
+        ClinVar database의 각 라인을 파징하여, { symbol: {var_id: [var_infos]}}와 같이 구성된
+        <variant_info_dic>을 만들어 반환한다. 이 때, pathogenicity의 경우, 한 id의 rcv에 다수의 보고가 포함되므로
+        각 보고의 pathogencitity의 수를 count하여 dictionary 형태로 저장한다.
+
+    Args:
+        var_row (list): splitted each file line
+        file_col2idx (dict): file index dictionary
+
+    Returns:
+        dict: { "var_id": [molecular_consequences, pathogenicity(dict)] }
+
+    Examples:
+        >>> {"13-32921028-CTTTCGG-C": ["Pathogenic", {"splice donor variant": 1}] }
+    """
+
+    clinvar_var_info_dic = dict()
+
+    var_id: str = var_row[file_col2idx["normalized_variant:GRCh37:CPRA"]]
+    var_pathogenicity: str = var_row[file_col2idx["pathogenicity"]]
+    var_consequences: list = var_row[
+        file_col2idx["variant:molecular_consequence"]
+    ].split("::")
+
+    var_consequence_dic = defaultdict(int)
+
+    for cons in var_consequences:
+        var_consequence_dic[cons.split(":")[-1]] += 1
+
+    clinvar_var_info_dic[var_id] = [var_pathogenicity, var_consequence_dic]
+
+    return clinvar_var_info_dic
+
+
+"""미완료"""
+
+
+def read_disease_db(filename: str):
+
+    with open(filename) as inFile:
+
+        disease_dic = dict()
+
+        # omimPhenoId[0] omimGeneId[1] orphaId[2] orphaGeneSymbol[3] ncbiGeneId[4]
+        # ensemblGeneId[5] hgncId[6] title[7] preferredTitle[8] geneSymbol[9]
+        # inheritances:value[10] inheritances:source[11] onsetAges:value[12] ~
+        for line in inFile:
+            if not line.startswith("#"):
+                tmp = line.strip().split("\t")
+                ncbi_gene_id = tmp[4].split(",")
+                ensenbl_gene_id = tmp[5].split(",")
+                disease_name = tmp[7]
+                inheritance_p = set(tmp[10].split("||"))
+                onset_age = set(tmp[12].split("||"))
+
+                _gene_id = (ncbi_gene_id, ensenbl_gene_id)
+                _contents = [disease_name, inheritance_p, onset_age]
+
+                disease_dic[_gene_id] = _contents
+                """중복 gene에 대한 병합 필요"""
+
+    return disease_dic
