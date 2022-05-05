@@ -292,31 +292,83 @@ def make_clinvar_gene_info_dic(var_row: list, file_col2idx: dict) -> dict:
     return clinvar_var_info_dic
 
 
-"""미완료"""
+def parse_disease_db(filename: str) -> tuple:
+    """_summary_
+    Note:
+        자체적으로 구축한 disease database 파일을 parsing 하여, "gene_symbol"을 key로 하는
+        dictionary를 반환한다. 파일의 라인은 각각 특정한 질병에 대해, gene symbol, onset age,
+        inheritence 정보 등이 정리되어 있다. 이 때, 동일한 gene symbol이 존재하는 경우가 간혹 있는데,
+        동일한 유전자에 해당하는 질병 정보는 [title, inheritence, onsetAge] 와 같은 리스트의 형태로
+        value(list에 append해서 저장한다. 최종적으로 생선된 dictionary와 저장된 column의 index
+        정보를 반환한다.
+
+    Args:
+        filename (str): file address
+
+    Returns:
+        dict: { "geneSymbol": [ ["title", "inheritance", "onsetAges"] ] }
+
+    Examples:
+        >>> {
+                "TBCE": [
+                    ["Ciliary dyskinesia, primary, 14" ,["Autosomal recessive"], ["Pediatric"]],
+                    ["Encephalopathy, progressive, with amyotrophy and optic atrophy" ,["Autosomal recessive"], ["Infancy", "Neonatal"]]
+                ]
+            }
+    """
+
+    disease_col2idx: dict = {"title": 0, "inheritance": 1, "onsetAges": 2}
+
+    with open(filename) as infile:
+
+        disease_db_dic = defaultdict(list)
+        # { symbol: [ [disease_infos] ] }
+        for line in infile:
+            if line.startswith("#"):
+                f_col2idx = {
+                    val: idx
+                    for idx, val in enumerate(
+                        line.strip("#").strip().split("\t")
+                    )
+                }
+            else:  # disease info
+                row = line.strip().split("\t")
+                gene_symbol = row[f_col2idx["geneSymbol"]]
+                disease_infos: list = make_disease_info_list(row, f_col2idx)
+                disease_db_dic[gene_symbol].append(disease_infos)
+
+    return disease_db_dic, disease_col2idx
 
 
-def read_disease_db(filename: str):
+def make_disease_info_list(disease_row: list, file_col2idx: dict) -> list:
+    """_summary_
+    Note:
+        Disease database의 각 라인을 파징하여, ["title", "inheritance", "onsetAges"] 와
+        같이 구성된 <disease_info_list>를 만들어 반환한다.
 
-    with open(filename) as inFile:
+    Args:
+        disease_row (list): splitted each file line
+        file_col2idx (dict): file index dictionary
 
-        disease_dic = dict()
+    Returns:
+        list: ["title", "inheritances", "onsetAges"]
 
-        # omimPhenoId[0] omimGeneId[1] orphaId[2] orphaGeneSymbol[3] ncbiGeneId[4]
-        # ensemblGeneId[5] hgncId[6] title[7] preferredTitle[8] geneSymbol[9]
-        # inheritances:value[10] inheritances:source[11] onsetAges:value[12] ~
-        for line in inFile:
-            if not line.startswith("#"):
-                tmp = line.strip().split("\t")
-                ncbi_gene_id = tmp[4].split(",")
-                ensenbl_gene_id = tmp[5].split(",")
-                disease_name = tmp[7]
-                inheritance_p = set(tmp[10].split("||"))
-                onset_age = set(tmp[12].split("||"))
+    Examples:
+        >>> ["Ciliary dyskinesia, primary, 14" ,["Autosomal recessive"], ["Pediatric"]]
+    """
 
-                _gene_id = (ncbi_gene_id, ensenbl_gene_id)
-                _contents = [disease_name, inheritance_p, onset_age]
+    disease_infos = list()
 
-                disease_dic[_gene_id] = _contents
-                """중복 gene에 대한 병합 필요"""
+    disease_title: str = disease_row[file_col2idx["title"]]
+    disease_inheritances: list = disease_row[
+        file_col2idx["inheritances:value"]
+    ].split("||")
+    disease_onset_age: list = disease_row[
+        file_col2idx["onsetAges:value"]
+    ].split("||")
 
-    return disease_dic
+    disease_infos.extend(
+        [disease_title, disease_inheritances, disease_onset_age]
+    )
+
+    return disease_infos
