@@ -21,7 +21,6 @@ clinvar_db_sp = "/data/practice/clinvar_sample.txt"
 CLINVAR_DB = "/data/projects/ACMG/database/clinvar_parsed_single.txt"
 DISEASE_DB = "/data/projects/ACMG/database/disease.txt"
 GNOMAD_DB = "/data/projects/ACMG/database/gnomad.exomes.r2.1.1.sites.vcf.gz"
-
 REVEL_DB = "/data/projects/ACMG/database/revel_with_transcript_ids"
 SPLICEAI_DB = "/data/projects/ACMG/database/proband.spliceai.vcf"
 
@@ -194,16 +193,17 @@ def main():
     proband_var_df = pp3bp4bp7.execute(proband_var_df, spliceai_db_dic)
     # 30초 정도 걸림
     clinvar_db_dic, clinvar_col2idx = dbparser.parse_clinvar_db(CLINVAR_DB)
-    proband_var_df.variant_dic = pp2bp1.execute(
+    proband_var_df = pp2bp1.execute(
         proband_var_df, clinvar_db_dic, clinvar_col2idx
     )
-
-    end = time.time()
-    print("time:", end - start)
-
-    """이거하는중 """
-    proband_var_df.variant_dic = pvs1.execute(proband_var_df)
-
+    disease_db_dic, disease_col2idx = dbparser.parse_disease_db(DISEASE_DB)
+    proband_var_df = pvs1.execute(
+        proband_var_df,
+        clinvar_db_dic,
+        clinvar_col2idx,
+        disease_db_dic,
+        disease_col2idx,
+    )
 
 if __name__ == "__main__":
 
