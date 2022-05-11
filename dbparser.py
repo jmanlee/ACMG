@@ -1,6 +1,7 @@
 # module for dasebase parsing
 
 from collections import defaultdict
+import gzip
 
 
 def read_big_file(filename: str) -> str:
@@ -20,6 +21,25 @@ def read_big_file(filename: str) -> str:
             if not line:
                 break
             yield line
+
+
+def read_big_gz_file(filename: str) -> str:
+    """_summary_
+    Note:
+        input gz 압축 file의 각 line 정보를 generator 형식으로, 매 호출시 반환한다.
+
+    Args:
+        filename (str): file address
+
+    Yields:
+        line (str): 각 line의 정보를 매 호출 시 string으로 반환
+    """
+
+    with gzip.open(filename, "rb") as infile:
+        for line in infile:
+            if not line:
+                break
+            yield line.decode(encoding="utf-8")
 
 
 def parse_spliceai_db(filename: str) -> dict:
@@ -220,18 +240,22 @@ def parse_clinvar_db(filename: str) -> tuple:
         filename (str): file address
 
     Returns:
-        dict: { "gene symbol": { "var_id": [molecular_consequences, pathogenicity(dict)] }}
+        dict: { "gene symbol": { "var_id": [pathogenicity, molecular_consequences(dict)] }}
 
     Examples:
         >>> {
                 "BRCA2": {
-                    "13-32921028-CTTTCGG-C": ["Pathogenic", {"splice donor variant": 1}]
-                    "13-32950906-C-A": ["Pathogenic", {"missense variant": 2, "intron variant": 1}]
+                    "13-32921028-CTTTCGG-C": ["Pathogenic", {"splice donor variant": 1}, "G245R::G289R"]
+                    "13-32950906-C-A": ["Pathogenic", {"missense variant": 2, "intron variant": 1}, "K570N"]
                 }
             }
     """
 
-    clinvar_col2idx: dict = {"pathogenicity": 0, "consequence_dic": 1}
+    clinvar_col2idx: dict = {
+        "pathogenicity": 0,
+        "consequence_dic": 1,
+        "aa_change": 2,
+    }
 
     with open(filename) as infile:
 
@@ -248,10 +272,12 @@ def parse_clinvar_db(filename: str) -> tuple:
             else:  # clinvar info
                 row = line.strip().split("\t")
                 gene_symbol = row[f_col2idx["variant:gene:symbol"]]
+                gene_symbols = gene_symbol.split("::")
                 clinvar_var_info_dic = make_clinvar_gene_info_dic(
                     row, f_col2idx
                 )
-                clinvar_db_dic[gene_symbol].update(clinvar_var_info_dic)
+                for g_symbol in gene_symbols:
+                    clinvar_db_dic[g_symbol].update(clinvar_var_info_dic)
 
     return clinvar_db_dic, clinvar_col2idx
 
@@ -268,10 +294,10 @@ def make_clinvar_gene_info_dic(var_row: list, file_col2idx: dict) -> dict:
         file_col2idx (dict): file index dictionary
 
     Returns:
-        dict: { "var_id": [molecular_consequences, pathogenicity(dict)] }
+        dict: { "var_id": [pathogenicity, molecular_consequences(dict), aa_change] }
 
     Examples:
-        >>> {"13-32921028-CTTTCGG-C": ["Pathogenic", {"splice donor variant": 1}] }
+        >>> {"13-32921028-CTTTCGG-C": ["Pathogenic", {"splice donor variant": 1}, "G245R::G289R"] }
     """
 
     clinvar_var_info_dic = dict()
@@ -281,13 +307,18 @@ def make_clinvar_gene_info_dic(var_row: list, file_col2idx: dict) -> dict:
     var_consequences: list = var_row[
         file_col2idx["variant:molecular_consequence"]
     ].split("::")
+    var_aa_change: str = var_row[file_col2idx["variant:Protein1LetterCode"]]
 
     var_consequence_dic = defaultdict(int)
 
     for cons in var_consequences:
         var_consequence_dic[cons.split(":")[-1]] += 1
 
-    clinvar_var_info_dic[var_id] = [var_pathogenicity, var_consequence_dic]
+    clinvar_var_info_dic[var_id] = [
+        var_pathogenicity,
+        var_consequence_dic,
+        var_aa_change,
+    ]
 
     return clinvar_var_info_dic
 
@@ -307,6 +338,7 @@ def parse_disease_db(filename: str) -> tuple:
 
     Returns:
         dict: { "geneSymbol": [ ["title", "inheritance", "onsetAges"] ] }
+        disease_col2idx: dict = {"title": 0, "inheritance": 1, "onsetAges": 2}
 
     Examples:
         >>> {
@@ -315,6 +347,7 @@ def parse_disease_db(filename: str) -> tuple:
                     ["Encephalopathy, progressive, with amyotrophy and optic atrophy" ,["Autosomal recessive"], ["Infancy", "Neonatal"]]
                 ]
             }
+            disease_col2idx: dict = {"title": 0, "inheritance": 1, "onsetAges": 2}
     """
 
     disease_col2idx: dict = {"title": 0, "inheritance": 1, "onsetAges": 2}
@@ -334,8 +367,11 @@ def parse_disease_db(filename: str) -> tuple:
             else:  # disease info
                 row = line.strip().split("\t")
                 gene_symbol = row[f_col2idx["geneSymbol"]]
+                gene_symbols = gene_symbol.split("::")
                 disease_infos: list = make_disease_info_list(row, f_col2idx)
-                disease_db_dic[gene_symbol].append(disease_infos)
+
+                for g_symbol in gene_symbols:
+                    disease_db_dic[gene_symbol].append(disease_infos)
 
     return disease_db_dic, disease_col2idx
 
@@ -359,6 +395,7 @@ def make_disease_info_list(disease_row: list, file_col2idx: dict) -> list:
 
     disease_infos = list()
 
+    # contents
     disease_title: str = disease_row[file_col2idx["title"]]
     disease_inheritances: list = disease_row[
         file_col2idx["inheritances:value"]
@@ -367,6 +404,7 @@ def make_disease_info_list(disease_row: list, file_col2idx: dict) -> list:
         file_col2idx["onsetAges:value"]
     ].split("||")
 
+    # append infos
     disease_infos.extend(
         [disease_title, disease_inheritances, disease_onset_age]
     )
