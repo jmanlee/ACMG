@@ -410,3 +410,45 @@ def make_disease_info_list(disease_row: list, file_col2idx: dict) -> list:
     )
 
     return disease_infos
+
+
+def parse_repeatmasker_db(filename: str) -> dict:
+    """_summary_
+    Note:
+        Repeat region에 대한 database 파일을 parsing 하여, "Chromosome"을 key로 하는 dictionary를
+        반환한다. 파일의 라인은 각각 특정한 염색체의 반복서열 범위의 start, end를 포함하고 있다. 동일한 염색체에 해
+        당하는 (start, end) 세트를 리스트에 append한 뒤, 염색체를 key로 하는 dictionary에 저장한다.
+
+    Args:
+        filename (str): file address
+
+    Returns:
+        dict: {"chrom#": [(start1, end1), (start2, end2)]}
+
+    Examples:
+        >>> {
+                "1": [(10001, 10467), (10469, 11447), ...]
+                "2": [(444214, 444451), (445112, 445234), ...]
+            } (start, end)는 오름차순 정렬되어 있음.
+    """
+
+    with open(filename) as infile:
+
+        repeatmasker_db_dic = defaultdict(list)
+        # { chr# : [(start, end), ..]}
+
+        # 첫 세줄이 column 명 관련. 따로 파징하기 어려워서 3줄 readline.
+        a = infile.readline()
+        b = infile.readline()
+        c = infile.readline()
+
+        # append position infos
+        for line in infile:
+            row = line.strip().split()
+            chrom = row[4]  # chr1
+            start_pos = int(row[5])
+            end_pos = int(row[6])
+
+            repeatmasker_db_dic[chrom[3:]].append((start_pos, end_pos))
+
+    return repeatmasker_db_dic
