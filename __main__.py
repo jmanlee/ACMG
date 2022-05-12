@@ -1,15 +1,15 @@
 from collections import defaultdict
 
 import time
-import dbparser, bayesframe, pp3bp4bp7, pp2bp1, pvs1
+import dbparser, bayesframe, pp3bp4bp7, pp2bp1, pvs1, ps1pm5pp5bp6, pm2ba1bs1, ps2, pm4bp3
 
 # input file
-PROBAND_VEP = "/data/data/proband.preprocessed_37.txt"
-PROBAND_VCF = "/data/data/proband.preprocessed.vcf"
-FATHER_VEP = "/data/data/proband.father.preprocessed_37.txt"
-FATHER_VCF = "/data/data/proband.father.preprocessed.vcf"
-MOTHER_VEP = "/data/data/proband.mother.preprocessed_37.txt"
-MOTHER_VCF = "/data/data/proband.mother.preprocessed.vcf"
+PROBAND_VEP = "/data/projects/ACMG/input/proband.preprocessed_37.txt"
+PROBAND_VCF = "/data/projects/ACMG/input/proband.preprocessed.vcf"
+FATHER_VEP = "/data/projects/ACMG/input/proband.father.preprocessed_37.txt"
+FATHER_VCF = "/data/projects/ACMG/input/proband.father.preprocessed.vcf"
+MOTHER_VEP = "/data/projects/ACMG/input/proband.mother.preprocessed_37.txt"
+MOTHER_VCF = "/data/projects/ACMG/input/proband.mother.preprocessed.vcf"
 
 proband_sp = "/data/practice/proband_vep.txt"
 mother_sp = "/data/practice/mother_vcf.txt"
@@ -23,6 +23,7 @@ DISEASE_DB = "/data/projects/ACMG/database/disease.txt"
 GNOMAD_DB = "/data/projects/ACMG/database/gnomad.exomes.r2.1.1.sites.vcf.gz"
 REVEL_DB = "/data/projects/ACMG/database/revel_with_transcript_ids"
 SPLICEAI_DB = "/data/projects/ACMG/database/proband.spliceai.vcf"
+REPEAT_DB = "/data/projects/ACMG/database/hg19.fa.out"
 
 
 class VariantDF:
@@ -35,6 +36,7 @@ class VariantDF:
 
     Examples:
     >>> df_col2idx = {"var_id": 0, "gene": 1, ...}
+
         variant_dic = {
             "var_key_id": {
                 "var_key_feature": {
@@ -56,16 +58,22 @@ class VariantDF:
     def __init__(self):
         self.df_col2idx: dict = {
             "var_id": 0,  # 1-69270-A-G
-            "gene": 1,
-            "feature": 2,
-            "consequence": 3,
-            "cDNA_pos": 4,
-            "CDS_pos": 5,
-            "protein_pos": 6,
-            "AA_change": 7,
-            "codon_change": 8,
-            "symbol": 9,
-            "revel": 10,
+            "chrom": 1,
+            "location": 2,
+            "gene": 3,
+            "feature": 4,
+            "consequence": 5,
+            "cDNA_pos": 6,
+            "CDS_pos": 7,
+            "protein_pos": 8,
+            "AA_change": 9,
+            "codon_change": 10,
+            "symbol": 11,
+            "strand": 12,
+            "revel": 13,
+            "gnomad_ac": 14,
+            "gnomad_an": 15,
+            "gnomad_af": 16,
         }
         self.variant_dic: dict = None
 
@@ -84,8 +92,8 @@ class VariantDF:
         >>> variant_dic = {
                 "1-21929260-A-G": {
                     "NR_170901.1": {
-                        - var_infos: ["1-21929260-A-G", "5909", "NR_170901.1",
-                                  "intron_variant,non_coding_transcript_variant",
+                        - var_infos: ["1-21929260-A-G", "1", ["1234"], "5909",
+                            "NR_170901.1","intron_variant,non_coding_transcript_variant",
                                     "-", "-", "-", "-", "-", "-1", "RAP1GAP"]
                         - evidence_score_dic: dict(bool)
                     }
@@ -103,7 +111,6 @@ class VariantDF:
                             line.strip("#").strip().split("\t")
                         )
                     }
-
                 if not line.startswith("#"):  # variation info
                     row = line.strip().split("\t")
                     # "1-69270-A-G", "ENST00000335137"
@@ -135,23 +142,38 @@ class VariantDF:
 
         Examples:
         >>> {
-                - "var_infos": ["1-21929260-A-G", "5909", "NR_170901.1",
+                - "var_infos": ["1-21929260-A-G", "1", ["1234"], "5909", "NR_170901.1",
                             "intron_variant,non_coding_transcript_variant",
                             "-", "-", "-", "-", "-", "-1", "RAP1GAP"]
                 - "evidence_score_dic": dict(bool)
             }"""
 
+        # variable initialization
         variant_info_dic = {"var_infos": None, "evidence_score_dic": dict()}
         gene_symbol = ""
+        strand = ""
         revel = None
+        gnomad_ac = 0
+        gnomad_an = 0
+        gnomad_af = None
+
+        # variable assignment
+        chrom, location = var_row[file_col2idx["Location"]].split(":")
+        location = list(map(int, location.split("-")))  # [1234] or [1234, 1236]
 
         if "SYMBOL=" in var_row[file_col2idx["Extra"]]:
             gene_symbol = (
                 var_row[file_col2idx["Extra"]].split("SYMBOL=")[1].split(";")[0]
             )
+        if "STRAND=" in var_row[file_col2idx["Extra"]]:
+            strand = (
+                var_row[file_col2idx["Extra"]].split("STRAND=")[1].split(";")[0]
+            )
 
         var_infos = [
             var_row[file_col2idx["Uploaded_variation"]],
+            chrom,
+            location,
             var_row[file_col2idx["Gene"]],
             var_row[file_col2idx["Feature"]],
             var_row[file_col2idx["Consequence"]],
@@ -161,11 +183,55 @@ class VariantDF:
             var_row[file_col2idx["Amino_acids"]],
             var_row[file_col2idx["Codons"]],
             gene_symbol,
+            strand,
             revel,
+            gnomad_ac,
+            gnomad_an,
+            gnomad_af,
         ]
         variant_info_dic["var_infos"] = var_infos
 
         return variant_info_dic
+
+
+def parse_vcf_genotype(vcf_file: str, family="") -> dict:
+    """_summary_
+    Note:
+        variant의 de novo 판정을 위해서, vcf file에 있는 GT 정보를 저장한다.
+
+    Returns:
+        dict: {var_id : GT}
+
+    Examples:
+    >>> {
+            - 1-866319-G-A: '1/1'
+            - 1-897325-G-C: '0/1'
+            - 1-866511-C-CCCCT: '0/1'
+        }
+    """
+    ## CHROM POS ID REF ALT QUAL FILTER INFO FORMAT ETD21-RWNY
+    with open(vcf_file) as infile:
+
+        vcf_genotype_dic = dict()
+        # {var_id : GT}
+        for line in infile:
+            if line.startswith("#") and (not line.startswith("##")):
+                f_col2idx = {
+                    val: idx
+                    for idx, val in enumerate(
+                        line.strip("#").strip().split("\t")
+                    )
+                }
+            if not line.startswith("#"):  # variation info
+                row = line.strip().split("\t")
+                var_id = row[f_col2idx["ID"]]  # 1-985445-G-GT
+                var_info = row[
+                    f_col2idx[f"ETD21-RWNY{family}"]
+                ]  # 1/1:0,7:7:21:226,21,0
+                genotypes = var_info.split(":")[0]  # GT:AD:DP:GQ:PL, 1/1
+                vcf_genotype_dic[var_id] = genotypes
+
+    return vcf_genotype_dic
 
 
 def main():
@@ -180,23 +246,26 @@ def main():
     """
     start = time.time()
 
+    # VEP annotated VCF 파일을 저장하는 과정
     proband_var_df = VariantDF()
-    father_var_df = VariantDF()
-    mother_var_df = VariantDF()
-
     proband_var_df.parse_variant_file(PROBAND_VEP)
-    # father_var_df.parse_variant_file(FATHER_VEP)
-    # mother_var_df.parse_variant_file(MOTHER_VEP)
 
-    # 2분 정도
+    # de novo 판정을 위한 genotype 정보 저장하는 과정
+    proband_genotype_dic = parse_vcf_genotype(PROBAND_VCF)
+    father_genotype_dic = parse_vcf_genotype(FATHER_VCF, "F")
+    mother_genotype_dic = parse_vcf_genotype(MOTHER_VCF, "M")
+
+    # 데이터베이스 전처리 과정
     spliceai_db_dic = dbparser.parse_spliceai_db(SPLICEAI_DB)
+    clinvar_db_dic, clinvar_col2idx = dbparser.parse_clinvar_db(clinvar_db_sp)
+    disease_db_dic, disease_col2idx = dbparser.parse_disease_db(DISEASE_DB)
+    repeat_db_dic = dbparser.parse_repeatmasker_db(REPEAT_DB)
+
+    # rule 동작
     proband_var_df = pp3bp4bp7.execute(proband_var_df, spliceai_db_dic)
-    # 30초 정도 걸림
-    clinvar_db_dic, clinvar_col2idx = dbparser.parse_clinvar_db(CLINVAR_DB)
     proband_var_df = pp2bp1.execute(
         proband_var_df, clinvar_db_dic, clinvar_col2idx
     )
-    disease_db_dic, disease_col2idx = dbparser.parse_disease_db(DISEASE_DB)
     proband_var_df = pvs1.execute(
         proband_var_df,
         clinvar_db_dic,
@@ -204,6 +273,34 @@ def main():
         disease_db_dic,
         disease_col2idx,
     )
+    proband_var_df = pm2ba1bs1.execute(
+        proband_var_df, disease_db_dic, disease_col2idx
+    )
+    # 약 14초. pm5 3종류. ps1, pp5 없음.
+    proband_var_df = ps1pm5pp5bp6.execute(
+        proband_var_df, clinvar_db_dic, clinvar_col2idx
+    )
+    # 8초. 약 2851개 변이가 de novo
+    proband_var_df = ps2.execute(
+        proband_var_df,
+        proband_genotype_dic,
+        father_genotype_dic,
+        mother_genotype_dic,
+    )
+    # 약 20초 766개가 bp3
+    proband_genotype_dic = pm4bp3.execute(proband_var_df, repeat_db_dic)
+
+    end = time.time()
+    print("time:", end - start)
+
+    """
+    with open("./database/clinvar_dic.txt", "w") as outfile:
+        for gene in clinvar_db_dic:
+            print(gene, file=outfile)
+            for id, info in clinvar_db_dic[gene].items():
+                print(id, info, file=outfile)
+    """
+
 
 if __name__ == "__main__":
 
