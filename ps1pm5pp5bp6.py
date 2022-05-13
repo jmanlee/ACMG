@@ -132,8 +132,6 @@ def check_amino_acid_change_in_clinvar(
     first_codon_start = pb_chr_pos - alt_start_index
     last_codon_end = first_codon_start + (codon_len - 1)
 
-    # print(pb_alt_codon, pb_alt_nuc, alt_start_index)
-
     # e.g. aAAGgt -> {1000: 'A', 1001: 'A', .. ,1005: 'T'}
     ref_nuc_idx_dic = dict()
     for i in range(codon_len):
@@ -153,7 +151,7 @@ def check_amino_acid_change_in_clinvar(
         if len(cv_ref_nuc) != len(cv_alt_nuc):
             continue
 
-        # 변이의 위치정보 저장. e.g. {1000: 'A', 1001: 'A', .. ,1005: 'T'}
+        # clinvar 변이의 위치정보 저장. e.g. {1000: 'A', 1001: 'A', .. ,1005: 'T'}
         cv_nuc_idx_dic = dict()
         for i in range(cv_var_len):
             cv_nuc_idx_dic[cv_chr_pos + i] = cv_alt_nuc[i].upper()
@@ -203,20 +201,6 @@ def check_amino_acid_change_in_clinvar(
                     ps1 = 1
                 else:
                     pm5 = 1
-
-        """
-        print(
-            proband_var_id,
-            pb_ref_codon,
-            pb_alt_codon,
-            clinvar_var_id,
-            cv_altered_codon,
-            pb_ref_aa,
-            pb_alt_aa,
-            var_infos[clinvar_col2idx["aa_change"]],
-            cv_alt_aa,
-        )
-        """
 
     return (ps1, pm5)
 
