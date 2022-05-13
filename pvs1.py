@@ -195,9 +195,9 @@ def execute(
                                 if (int(var_pos) / int(protein_len)) < 0.9:
                                     pvs1 = 1
                                 else:
-                                    pvs1 = 0.5
+                                    pvs1 = 1
                             except TypeError:  # '-'
-                                pvs1 = 0.5
+                                pvs1 = 1
 
             variant_dic[var_id][var_feature]["evidence_score_dic"][
                 "pvs1"
