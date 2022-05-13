@@ -36,8 +36,6 @@ def add_gnomad_into_var_infos(variant_dic: dict, df_col2idx: dict) -> dict:
             '25/39', 'V/I', 'Gta/Ata', 'LMBR1L', 0.051, 240, 100000, 0.241109]
     """
 
-    count = 0
-
     # gnomad 각 라인 파징
     for line in dbparser.read_big_gz_file(GNOMAD_DB):
         if line.startswith("#") and (not line.startswith("##")):
@@ -79,11 +77,6 @@ def add_gnomad_into_var_infos(variant_dic: dict, df_col2idx: dict) -> dict:
                         variant_dic[var_id][var_feature]["var_infos"][
                             df_col2idx["gnomad_af"]
                         ] = float(gnomad_af)
-
-                    count += 1
-
-            if count > 200000:
-                break
 
     return variant_dic
 
