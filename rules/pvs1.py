@@ -168,7 +168,7 @@ def execute(
     for var_id in variant_dic:
         for var_feature in variant_dic[var_id]:
 
-            pvs1 = 0
+            pvs1 = ""
             if is_null_var(variant_dic[var_id][var_feature], df_col2idx):
                 gene_symbol = variant_dic[var_id][var_feature]["var_infos"][
                     df_col2idx["symbol"]
@@ -193,11 +193,11 @@ def execute(
                             # variant remove 기준: 90%
                             try:
                                 if (int(var_pos) / int(protein_len)) < 0.9:
-                                    pvs1 = 1
+                                    pvs1 = "PVS1_S"
                                 else:
-                                    pvs1 = 1
+                                    pvs1 = "PVS1_M"
                             except TypeError:  # '-'
-                                pvs1 = 1
+                                pvs1 = "PVS1_M"
 
             variant_dic[var_id][var_feature]["evidence_score_dic"][
                 "pvs1"
