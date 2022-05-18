@@ -202,6 +202,21 @@ def check_amino_acid_change_in_clinvar(
                 else:
                     pm5 = 1
 
+        """
+        print(
+            proband_var_id,
+            pb_ref_codon,
+            pb_alt_codon,
+            clinvar_var_id,
+            cv_altered_codon,
+            strand,
+            pb_ref_aa,
+            pb_alt_aa,
+            var_infos[clinvar_col2idx["aa_change"]],
+            cv_alt_aa,
+        )
+        """
+
     return (ps1, pm5)
 
 
