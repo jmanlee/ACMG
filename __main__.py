@@ -1,21 +1,15 @@
+from .helper import *
+from .rules import *
 from collections import defaultdict
 
 import time
-import dbparser, bayesframe, pp3bp4bp7, pp2bp1, pvs1, ps1pm5pp5bp6, pm2ba1bs1, ps2, pm4bp3
 
+# python -m ACMG
 # input file
 PROBAND_VEP = "/data/projects/ACMG/input/proband.preprocessed_37.txt"
 PROBAND_VCF = "/data/projects/ACMG/input/proband.preprocessed.vcf"
-FATHER_VEP = "/data/projects/ACMG/input/proband.father.preprocessed_37.txt"
 FATHER_VCF = "/data/projects/ACMG/input/proband.father.preprocessed.vcf"
-MOTHER_VEP = "/data/projects/ACMG/input/proband.mother.preprocessed_37.txt"
 MOTHER_VCF = "/data/projects/ACMG/input/proband.mother.preprocessed.vcf"
-
-proband_sp = "/data/practice/proband_vep.txt"
-mother_sp = "/data/practice/mother_vcf.txt"
-spliceai_db_sp = "/data/projects/ACMG/database/proband.spliceai_sp.vcf"
-revel_db_sp = "/data/practice/revel_sample.txt"
-clinvar_db_sp = "/data/practice/clinvar_sample.txt"
 
 # database
 CLINVAR_DB = "/data/projects/ACMG/database/clinvar_parsed_single.txt"
@@ -47,7 +41,7 @@ class VariantDF:
             "1-69270-A-G": {
                 "ENST00000335137": {
                     - var_infos: [var_id, gene, feature, consequence, cDNA_pos, CDS_pos,
-                            Protein_pos, AA_change, codon_change, strand, symbol]
+                            Protein_pos, AA_change, codon_change, strand, symbol, ...]
                     - evidence_score_dic: dict(bool)
                 }
                 .
@@ -244,7 +238,6 @@ def main():
     최종적으로, 각각의 변이에 할당된 evidence rule 수를 바탕으로 bayesian framework를 이용하여 pathogenicity
     를 판별한 뒤, 이를 내림차순으로 출력한다.
     """
-    start = time.time()
 
     # VEP annotated VCF 파일을 저장하는 과정
     proband_var_df = VariantDF()
@@ -257,11 +250,11 @@ def main():
 
     # 데이터베이스 전처리 과정
     spliceai_db_dic = dbparser.parse_spliceai_db(SPLICEAI_DB)
-    clinvar_db_dic, clinvar_col2idx = dbparser.parse_clinvar_db(clinvar_db_sp)
+    clinvar_db_dic, clinvar_col2idx = dbparser.parse_clinvar_db(CLINVAR_DB)
     disease_db_dic, disease_col2idx = dbparser.parse_disease_db(DISEASE_DB)
     repeat_db_dic = dbparser.parse_repeatmasker_db(REPEAT_DB)
 
-    # rule 동작
+    # ACMG module
     proband_var_df = pp3bp4bp7.execute(proband_var_df, spliceai_db_dic)
     proband_var_df = pp2bp1.execute(
         proband_var_df, clinvar_db_dic, clinvar_col2idx
@@ -276,31 +269,18 @@ def main():
     proband_var_df = pm2ba1bs1.execute(
         proband_var_df, disease_db_dic, disease_col2idx
     )
-    # 약 14초. pm5 3종류. ps1, pp5 없음.
     proband_var_df = ps1pm5pp5bp6.execute(
         proband_var_df, clinvar_db_dic, clinvar_col2idx
     )
-    # 8초. 약 2851개 변이가 de novo
     proband_var_df = ps2.execute(
         proband_var_df,
         proband_genotype_dic,
         father_genotype_dic,
         mother_genotype_dic,
     )
-    # 약 20초 766개가 bp3
-    proband_genotype_dic = pm4bp3.execute(proband_var_df, repeat_db_dic)
-
-    end = time.time()
-    print("time:", end - start)
-
-    """
-    with open("./database/clinvar_dic.txt", "w") as outfile:
-        for gene in clinvar_db_dic:
-            print(gene, file=outfile)
-            for id, info in clinvar_db_dic[gene].items():
-                print(id, info, file=outfile)
-    """
-
+    proband_var_df = pm4bp3.execute(proband_var_df, repeat_db_dic)
+    
+    bayesframe.calculate_acmg(proband_var_df, disease_db_dic)
 
 if __name__ == "__main__":
 
