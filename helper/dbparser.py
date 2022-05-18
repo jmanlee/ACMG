@@ -240,7 +240,7 @@ def parse_clinvar_db(filename: str) -> tuple:
         filename (str): file address
 
     Returns:
-        dict: { "gene symbol": { "var_id": [pathogenicity, molecular_consequences(dict)] }}
+        dict: { "gene symbol": { "var_id": [pathogenicity, molecular_consequences(dict), aa_change] }}
 
     Examples:
         >>> {
@@ -337,20 +337,27 @@ def parse_disease_db(filename: str) -> tuple:
         filename (str): file address
 
     Returns:
-        dict: { "geneSymbol": [ ["title", "inheritance", "onsetAges"] ] }
-        disease_col2idx: dict = {"title": 0, "inheritance": 1, "onsetAges": 2}
+        dict: { "geneSymbol": [ ["title", "inheritance", "onsetAges", "symtoms_id", "symtoms"] ] }
+        disease_col2idx: dict = {"title": 0, "inheritance": 1, "onsetAges": 2, "symtoms_id": 3, "symtoms": 4}
 
     Examples:
         >>> {
                 "TBCE": [
-                    ["Ciliary dyskinesia, primary, 14" ,["Autosomal recessive"], ["Pediatric"]],
-                    ["Encephalopathy, progressive, with amyotrophy and optic atrophy" ,["Autosomal recessive"], ["Infancy", "Neonatal"]]
+                    ["Ciliary dyskinesia, primary, 14" ,["Autosomal recessive"], ["Pediatric"], symtoms_id, symtoms],
+                    ["Encephalopathy, progressive, with amyotrophy and optic atrophy" ,["Autosomal recessive"]
+                    , ["Infancy", "Neonatal"], symtoms_id, symtoms]
                 ]
             }
-            disease_col2idx: dict = {"title": 0, "inheritance": 1, "onsetAges": 2}
+            disease_col2idx: dict = {"title": 0, "inheritance": 1, "onsetAges": 2, "symtoms_id": 3, "symtoms": 4}
     """
 
-    disease_col2idx: dict = {"title": 0, "inheritance": 1, "onsetAges": 2}
+    disease_col2idx: dict = {
+        "title": 0,
+        "inheritance": 1,
+        "onsetAges": 2,
+        "symtoms_id": 3,
+        "symtoms": 4,
+    }
 
     with open(filename) as infile:
 
@@ -371,7 +378,7 @@ def parse_disease_db(filename: str) -> tuple:
                 disease_infos: list = make_disease_info_list(row, f_col2idx)
 
                 for g_symbol in gene_symbols:
-                    disease_db_dic[gene_symbol].append(disease_infos)
+                    disease_db_dic[g_symbol].append(disease_infos)
 
     return disease_db_dic, disease_col2idx
 
@@ -387,10 +394,10 @@ def make_disease_info_list(disease_row: list, file_col2idx: dict) -> list:
         file_col2idx (dict): file index dictionary
 
     Returns:
-        list: ["title", "inheritances", "onsetAges"]
+        list: ["title", "inheritances", "onsetAges", "symtoms_id", "symtoms"]
 
     Examples:
-        >>> ["Ciliary dyskinesia, primary, 14" ,["Autosomal recessive"], ["Pediatric"]]
+        >>> ["Ciliary dyskinesia, primary, 14" ,["Autosomal recessive"], ["Pediatric"], symtoms_id, symtoms]
     """
 
     disease_infos = list()
@@ -403,10 +410,22 @@ def make_disease_info_list(disease_row: list, file_col2idx: dict) -> list:
     disease_onset_age: list = disease_row[
         file_col2idx["onsetAges:value"]
     ].split("||")
+    disease_symtoms_id: list = disease_row[file_col2idx["symptoms:id"]].split(
+        "||"
+    )
+    disease_symtoms: list = disease_row[file_col2idx["symptoms:name"]].split(
+        "||"
+    )
 
     # append infos
     disease_infos.extend(
-        [disease_title, disease_inheritances, disease_onset_age]
+        [
+            disease_title,
+            disease_inheritances,
+            disease_onset_age,
+            disease_symtoms_id,
+            disease_symtoms,
+        ]
     )
 
     return disease_infos
