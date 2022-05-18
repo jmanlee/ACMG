@@ -1,7 +1,7 @@
 # Module for PM2, BA1, BS1
 # Population data, vs normal people variants
 
-import dbparser
+from ..helper import *
 
 GNOMAD_DB = "/data/projects/ACMG/database/gnomad.exomes.r2.1.1.sites.vcf.gz"
 
@@ -52,16 +52,18 @@ def add_gnomad_into_var_infos(variant_dic: dict, df_col2idx: dict) -> dict:
             alt = row[f_col2idx["ALT"]]
             var_id = f"{chr}-{pos}-{ref}-{alt}"  # 1-985445-G-GT
 
-            # ac, an, af 할당하는 과정. AN = 0 인 경우, AF가 없음.
-            gnomad_ac = row[f_col2idx["INFO"]].split("AC=")[1].split(";")[0]
-            gnomad_an = row[f_col2idx["INFO"]].split("AN=")[1].split(";")[0]
-            if "AF=" in row[f_col2idx["INFO"]]:
-                gnomad_af = row[f_col2idx["INFO"]].split("AF=")[1].split(";")[0]
-            else:
-                gnomad_af = None
-
             # 환자 변이 정보에 gnomad ratio를 할당
             if var_id in variant_dic:
+                # ac, an, af 할당하는 과정. AN = 0 인 경우, AF가 없음.
+                gnomad_ac = row[f_col2idx["INFO"]].split("AC=")[1].split(";")[0]
+                gnomad_an = row[f_col2idx["INFO"]].split("AN=")[1].split(";")[0]
+                if "AF=" in row[f_col2idx["INFO"]]:
+                    gnomad_af = (
+                        row[f_col2idx["INFO"]].split("AF=")[1].split(";")[0]
+                    )
+                else:
+                    gnomad_af = None
+                # 각 transcript 정보 리스트에 저장.
                 for var_feature in variant_dic[var_id]:
                     if gnomad_ac:
                         variant_dic[var_id][var_feature]["var_infos"][
