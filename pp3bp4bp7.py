@@ -1,10 +1,9 @@
 # Module for PP3, BP4, (BP7) rule
 # Predictive data, computational evidence
 
-import dbparser
+from ..helper import *
 
 REVEL_DB = "/data/projects/ACMG/database/revel_with_transcript_ids"
-revel_db_sp = "/data/practice/revel_sample.txt"
 
 
 def add_revel_into_var_infos(variant_dic: dict, df_col2idx: dict) -> dict:
@@ -88,9 +87,7 @@ def is_missense_var(var_infos_dic: dict, df_col2idx: dict) -> bool:
 
 
 def predict_missense_pathogenicity(
-    var_info_dic: dict,
-    df_col2idx: dict,
-    spliceai_db_dic: dict,
+    var_info_dic: dict, df_col2idx: dict, spliceai_db_dic: dict,
 ) -> tuple:
     """_summary_
     Note:
@@ -167,9 +164,7 @@ def predict_missense_pathogenicity(
 
 
 def predict_others_pathogenicity(
-    var_info_dic: dict,
-    df_col2idx: dict,
-    spliceai_db_dic: dict,
+    var_info_dic: dict, df_col2idx: dict, spliceai_db_dic: dict,
 ) -> tuple:
     """_summary_
     Note:
@@ -246,10 +241,7 @@ def is_synonymous_var(var_infos_dic: dict, df_col2idx: dict) -> bool:
         return False
 
 
-def execute(
-    proband_var_df: object,
-    spliceai_db_dic: dict,
-) -> dict:
+def execute(proband_var_df: object, spliceai_db_dic: dict) -> object:
     """_summary_
     Note: ACMG rule 중에서, pp3/bp4/bp7 에 해당하는 룰을 구현한 모듈이다. 각각의 rule에 대한 설명은 다음과 같다.
 
@@ -321,7 +313,7 @@ def execute(
                     df_col2idx,
                     spliceai_db_dic,
                 )
-                if bp4 == 1 & is_synonymous_var(
+                if (bp4 == 1) and is_synonymous_var(
                     variant_dic[var_id][var_feature], df_col2idx
                 ):  # if synonymous variant w/ BP4
                     bp7 = 1
