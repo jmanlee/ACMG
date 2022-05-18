@@ -109,10 +109,7 @@ def match_with_repeat_region(
     return (pm4, bp3)
 
 
-def execute(
-    proband_var_df: object,
-    repeat_db_dic: dict,
-) -> object:
+def execute(proband_var_df: object, repeat_db_dic: dict,) -> object:
     """_summary_
     Note:
         ACMG rule 중에서, pm4/bp3 에 해당하는 룰을 구현한 모듈이다. 각각의 rule에 대한 설명은 다음과 같다.
@@ -168,6 +165,7 @@ def execute(
                 location: list = variant_dic[var_id][var_feature]["var_infos"][
                     df_col2idx["location"]
                 ]
+                # (66766356, 66766357)
                 var_start = location[0]
                 var_end = location[-1]
 
