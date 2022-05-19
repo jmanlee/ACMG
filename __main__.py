@@ -2,8 +2,6 @@ from .helper import *
 from .rules import *
 from collections import defaultdict
 
-import time
-
 # python -m ACMG
 # input file
 PROBAND_VEP = "/data/projects/ACMG/input/proband.preprocessed_37.txt"
@@ -255,10 +253,13 @@ def main():
     repeat_db_dic = dbparser.parse_repeatmasker_db(REPEAT_DB)
 
     # ACMG module
+    # revel-5분. pp3 4210, bp4 728559, bp7 70829
     proband_var_df = pp3bp4bp7.execute(proband_var_df, spliceai_db_dic)
+    # pp2 2335, bp1 7766
     proband_var_df = pp2bp1.execute(
         proband_var_df, clinvar_db_dic, clinvar_col2idx
     )
+    # pvs1 176.
     proband_var_df = pvs1.execute(
         proband_var_df,
         clinvar_db_dic,
@@ -266,22 +267,26 @@ def main():
         disease_db_dic,
         disease_col2idx,
     )
+    # gnomad-1시간. pm2 1894, ba1 525127, bs1 12380
     proband_var_df = pm2ba1bs1.execute(
         proband_var_df, disease_db_dic, disease_col2idx
     )
+    # 약 14초. ps1 = 77, pm5 = 310(ps1 과 중복상태), pp5 =  88, bp6 =  170850
     proband_var_df = ps1pm5pp5bp6.execute(
         proband_var_df, clinvar_db_dic, clinvar_col2idx
     )
+    # 8초. ps2 33492(vcf = 2851개) de novo
     proband_var_df = ps2.execute(
         proband_var_df,
         proband_genotype_dic,
         father_genotype_dic,
         mother_genotype_dic,
     )
+    # 약 20초. pm4 = 1261, bp3 = 766
     proband_var_df = pm4bp3.execute(proband_var_df, repeat_db_dic)
-    
     bayesframe.calculate_acmg(proband_var_df, disease_db_dic)
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
+    # 약 3500초 소요
     main()
