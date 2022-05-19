@@ -161,7 +161,7 @@ def compare_with_disease_inheritence(
     else:
         return (pm2, bs1)
 
-    if inheritence in ["AD", "XD"]:  # dominant disease
+    if inheritence in ["AD", "XD", "YD"]:  # dominant disease
         if gnomad_af < 0.00002:  # 0.002%
             pm2 = 1
         elif gnomad_af > 0.0002:  # 0.02%
@@ -171,7 +171,7 @@ def compare_with_disease_inheritence(
             pm2 = 1
         elif gnomad_af > 0.001:  # 0.1%
             bs1 = 1
-    else:  # Y case?
+    else:
         pass
 
     return (pm2, bs1)
@@ -236,13 +236,19 @@ def assign_pm2bs1_rule(
                 disease_col2idx["inheritance"]
             ].count("X-linked recessive")
 
+            Y_count += each_disease_infos[disease_col2idx["inheritance"]].count(
+                "Y-linked"
+            )
+
         # 보고된 비율이 더 많은 쪽을 inheritence로 설정.
-        # 같은 수인 경우 dominant로 설정하며, X-linked 우선.
+        # 같은 수인 경우 dominant로 설정하며, X-linked, Y-linked 우선.
         if (XD_count + XR_count) > 0:
             if XD_count >= XR_count:
                 inheritence = "XD"
             else:
                 inheritence = "XR"
+        elif Y_count > 0:
+            inheritence = "YD"
         elif AD_count == 0 and AR_count == 0:
             return (pm2, bs1)
         elif AD_count >= AR_count:
