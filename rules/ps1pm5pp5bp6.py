@@ -196,26 +196,14 @@ def check_amino_acid_change_in_clinvar(
         else:
             cv_var_patho = var_infos[clinvar_col2idx["pathogenicity"]]
             # amino acid is changed, and if pathogenic
-            if cv_var_patho in pathogenic_set:
+            if (
+                "Pathogenic" in cv_var_patho
+                or "Likely pathogenic" in cv_var_patho
+            ):
                 if pb_alt_aa == cv_alt_aa:
                     ps1 = 1
                 else:
                     pm5 = 1
-
-        """
-        print(
-            proband_var_id,
-            pb_ref_codon,
-            pb_alt_codon,
-            clinvar_var_id,
-            cv_altered_codon,
-            strand,
-            pb_ref_aa,
-            pb_alt_aa,
-            var_infos[clinvar_col2idx["aa_change"]],
-            cv_alt_aa,
-        )
-        """
 
     return (ps1, pm5)
 
@@ -259,9 +247,9 @@ def check_same_variant_in_clinvar(
             var_patho = clinvar_db_dic[gene_symbol][proband_variant_id][
                 clinvar_col2idx["pathogenicity"]
             ]
-            if var_patho in pathogenic_set:
+            if "Pathogenic" in var_patho or "Likely pathogenic" in var_patho:
                 pp5 = 1
-            elif var_patho in benign_set:
+            elif "Benign" in var_patho or "Likely benign" in var_patho:
                 bp6 = 1
 
     return (pp5, bp6)
