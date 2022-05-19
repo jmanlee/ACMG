@@ -57,8 +57,6 @@ def check_gene_pathogenic_mechanism(
         mechanism (str): "missesne" or "null variant" or ""
     """
 
-    pathogenic_set = {"Pathogenic", "Likely pathogenic"}
-
     pathogenic_missense_count = 0
     pathogenic_null_count = 0
     pathogenic_count = 0
@@ -76,7 +74,7 @@ def check_gene_pathogenic_mechanism(
             + var_cons_dic.get("splice acceptor variant", 0)
             + var_cons_dic.get("initiatior codon variant", 0)
         )
-        if var_patho in pathogenic_set:  # pathogenic variant
+        if "Pathogenic" in var_patho or "Likely pathogenic" in var_patho:
             pathogenic_count += 1
 
             if (missense_count / sum(var_cons_dic.values())) > 0.5:
