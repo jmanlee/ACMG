@@ -4,15 +4,28 @@
 
 def calculate_acmg(proband_var_df: object, disease_db_dic: dict):
 
-    Opvs = 350
-    prior_p = 0.1
+    """_summary_
+    Note:
+        각 환자의 variant의 판별된 ACMG rule을 bayesian score로 환산한 뒤, 
+        별도의 outfile을 제작한다. 
+
+        이 때, BA1 만을 가진 경우는 제외하였다. 
+
+    Args:
+        proband_var_df (object): Class VariantDF <- VEP file
+        disease_db_dic (dict): Disease에 대한 정보를 유전자 별로 정리한 dict.
+    """
 
     df_col2idx = proband_var_df.df_col2idx
     variant_dic = proband_var_df.variant_dic
 
+    Opvs = 350
+    prior_p = 0.1
+
     with open(
-        "/data/projects/ACMG/output/ACMG_result_0517.txt", "w"
+        "/data/projects/ACMG/output/ACMG_result_0520.txt", "w"
     ) as outfile:
+        # contents
         print(
             "#Variant_ID",
             "Feature",
@@ -25,6 +38,7 @@ def calculate_acmg(proband_var_df: object, disease_db_dic: dict):
             sep="\t",
             file=outfile,
         )
+
         # counting
         for var_id in variant_dic:
             for var_feature in variant_dic[var_id]:
@@ -34,6 +48,7 @@ def calculate_acmg(proband_var_df: object, disease_db_dic: dict):
                 ACMG_rules = []
                 diseases = []
 
+                # 각각의 항목에 대한 rule의 수를 counting
                 for k, v in variant_dic[var_id][var_feature][
                     "evidence_score_dic"
                 ].items():
@@ -84,6 +99,7 @@ def calculate_acmg(proband_var_df: object, disease_db_dic: dict):
                 else:
                     pathogenicity = "VUS"
 
+                # 질병 정보.
                 if gene_symbol != "-":
                     diseases = disease_db_dic[gene_symbol]
 
