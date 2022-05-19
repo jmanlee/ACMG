@@ -58,8 +58,6 @@ def check_disease_cause_is_null(
         mechanism (bool): True or False (null variant)
     """
 
-    pathogenic_set = {"Pathogenic", "Likely pathogenic"}
-
     pathogenic_null_count = 0
     pathogenic_count = 0
 
@@ -75,7 +73,8 @@ def check_disease_cause_is_null(
             + var_cons_dic.get("splice acceptor variant", 0)
             + var_cons_dic.get("initiatior codon variant", 0)
         )
-        if var_patho in pathogenic_set:  # pathogenic variant
+
+        if "Pathogenic" in var_patho or "Likely pathogenic" in var_patho:
             pathogenic_count += 1
 
             if (null_count / sum(var_cons_dic.values())) > 0.5:
