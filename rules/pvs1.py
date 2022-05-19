@@ -17,9 +17,11 @@ def is_null_var(var_infos_dic: dict, df_col2idx: dict) -> bool:
 
     var_infos = var_infos_dic["var_infos"]  # uploaded_id
     # splice 관련 변이는 제외함.
-    if ("stop_gained" or "start_lost" or "frameshift_variant") in var_infos[
-        df_col2idx["consequence"]
-    ]:
+    if "stop_gained" in var_infos[df_col2idx["consequence"]]:
+        return True
+    elif "start_lost" in var_infos[df_col2idx["consequence"]]:
+        return True
+    elif "frameshift_variant" in var_infos[df_col2idx["consequence"]]:
         return True
     else:
         return False
