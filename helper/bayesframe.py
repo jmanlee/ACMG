@@ -23,7 +23,7 @@ def calculate_acmg(proband_var_df: object, disease_db_dic: dict):
     prior_p = 0.1
 
     with open(
-        "/data/projects/ACMG/output/ACMG_result_0520.txt", "w"
+        "/data/projects/ACMG/output/ACMG_result_0520_2.txt", "w"
     ) as outfile:
         # contents
         print(
@@ -92,9 +92,9 @@ def calculate_acmg(proband_var_df: object, disease_db_dic: dict):
                     pathogenicity = "Pathogenic"
                 elif post_p >= 0.9:
                     pathogenicity = "Likely pathogenic"
-                elif post_p <= 0.1:
+                elif post_p <= 0.01:
                     pathogenicity = "Benign"
-                elif post_p <= 0.5:
+                elif post_p <= 0.1:
                     pathogenicity = "Likely benign"
                 else:
                     pathogenicity = "VUS"
